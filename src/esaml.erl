@@ -20,6 +20,8 @@
 -export([config/2, config/1, to_xml/1, decode_response/1, decode_assertion/1, validate_assertion/3]).
 -export([decode_logout_request/1, decode_logout_response/1, decode_idp_metadata/1]).
 
+-import(lists, [map/2]).
+
 -type org() :: #esaml_org{}.
 -type contact() :: #esaml_contact{}.
 -type sp_metadata() :: #esaml_sp_metadata{}.
@@ -430,7 +432,8 @@ lang_elems(BaseTag, Val) ->
 %% @private
 -spec to_xml(saml_record()) -> #xmlElement{}.
 to_xml(#esaml_authnreq{version = V, issue_instant = Time, destination = Dest,
-        issuer = Issuer, name_format = Format, consumer_location = Consumer}) ->
+        issuer = Issuer, name_format = Format, consumer_location = Consumer,
+        idp_entry_list = IDPEntryList}) ->
     Ns = #xmlNamespace{nodes = [{"samlp", 'urn:oasis:names:tc:SAML:2.0:protocol'},
                                 {"saml", 'urn:oasis:names:tc:SAML:2.0:assertion'}]},
 
@@ -449,6 +452,18 @@ to_xml(#esaml_authnreq{version = V, issue_instant = Time, destination = Dest,
                         attributes = [#xmlAttribute{name = 'Format', value = Format}]}];
                 false ->
                     []
+              end
+              ++
+              case IDPEntryList of
+                [] ->
+                  [] ;
+                _ ->
+                  [
+                     #xmlElement{name = 'samlp:Scoping', content = [
+                        #xmlElement{name = 'samlp:IDPList', content =
+                          map(fun build_entry/1, IDPEntryList)
+                        }]}
+                  ]
               end
     });
 
@@ -606,6 +621,14 @@ to_xml(#esaml_logoutresp{version = V, issue_instant  = Time,
 
 to_xml(_) -> error("unknown record").
 
+
+-spec build_entry([[string()]]) -> #xmlElement{}.
+build_entry(EntryAttributes) ->
+  #xmlElement{name = 'samlp:IDPEntry', attributes = map(fun build_attribute/1,EntryAttributes)}.
+
+-spec build_attribute([string()]) -> #xmlAttribute{}.
+build_attribute({Key,Value}) ->
+  #xmlAttribute{name = list_to_atom(Key), value = list_to_atom(Value)}.
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

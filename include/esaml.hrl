@@ -46,7 +46,9 @@
 	destination = "" :: string(),
 	issuer = "" :: string(),
 	name_format = undefined :: undefined | string(),
-	consumer_location = "" :: string()}).
+	consumer_location = "" :: string(),
+	idp_entry_list = "" :: [[{string(),string()}]]
+	}).
 
 -record(esaml_subject, {
 	name = "" :: string(),

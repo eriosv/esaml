@@ -12,7 +12,7 @@
 -include("esaml.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
--export([setup/1, generate_authn_request/2, generate_authn_request/3, generate_metadata/1]).
+-export([setup/1, generate_authn_request/2, generate_authn_request/3, generate_authn_request/4, generate_metadata/1]).
 -export([validate_assertion/2, validate_assertion/3]).
 -export([generate_logout_request/3, generate_logout_request/4, generate_logout_response/3]).
 -export([validate_logout_request/2, validate_logout_response/2]).
@@ -54,11 +54,18 @@ reorder_issuer(Elem) ->
 generate_authn_request(IdpURL, SP = #esaml_sp{}) ->
     generate_authn_request(IdpURL, SP, undefined).
 
+
 %% @doc Return an AuthnRequest as an XML element
 -spec generate_authn_request(IdpURL :: string(), esaml:sp(), Format :: nameid_format()) -> #xmlElement{}.
+generate_authn_request(IdpURL, SP, Format) ->
+    generate_authn_request(IdpURL, SP, Format, []).
+
+%% @doc Return an AuthnRequest as an XML element
+-spec generate_authn_request(IdpURL :: string(), esaml:sp(), Format :: nameid_format(), IDPEntryList :: [[{string()}]]) -> #xmlElement{}.
 generate_authn_request(IdpURL,
         SP = #esaml_sp{metadata_uri = _MetaURI, consume_uri = ConsumeURI},
-        Format) ->
+        Format,
+        IDPEntryList) ->
     Now = erlang:localtime_to_universaltime(erlang:localtime()),
     Stamp = esaml_util:datetime_to_saml(Now),
     Issuer = get_entity_id(SP),
@@ -67,7 +74,9 @@ generate_authn_request(IdpURL,
                                        destination = IdpURL,
                                        issuer = Issuer,
                                        name_format = Format,
-                                       consumer_location = ConsumeURI}),
+                                       consumer_location = ConsumeURI,
+                                       idp_entry_list = IDPEntryList
+                                        }),
     if SP#esaml_sp.sp_sign_requests ->
         reorder_issuer(xmerl_dsig:sign(Xml, SP#esaml_sp.key, SP#esaml_sp.certificate));
     true ->
